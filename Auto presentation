@@ -1,0 +1,298 @@
+Sub Recycle_Data()
+
+Dim wb As Workbook
+Dim wbEMS As Workbook
+Dim wbSUEZ As Workbook
+Dim wbWaste As Workbook
+Dim Nocardboard As String, Nostyrofoam As String, Noplastic As String, Nopallets As String, Mystring As String
+Dim Answer As Integer, WasteSuezTotal As String, Waste As String, strMonthYear As String
+Dim strRangeAdd As Range
+
+Application.ScreenUpdating = False
+    
+    strYear = Range("E2").Value
+    'info on the dateserial format http://stackoverflow.com/questions/18935810/vba-format-function-returns-inconsistently
+    strDate = Format(DateSerial(Year(Date), Month(Date) - 1, 0), "dd/mm/yyyy") 'dd/mm/yyyy as a string variant
+    strName = "Recycle Data_Warehouse " & strYear & ".xls"
+    strPath = <redacted>
+    strFile = Dir(strPath & strName)
+    strMonth = Workbooks("EMS Control.xlsm").Worksheets("Sheet1").Range("C2") 'Month in MMM format as a string variant
+    strFullMonth = Workbooks("EMS Control.xlsm").Worksheets("Sheet1").Range("C3") 'Full month name as a string variant
+    strMonthYear = strMonth & strYear
+    
+    strNameAUNAT = "AU NAT Recycled Product Usage " & strYear & ".xlsx"
+    strPathAUNAT = <redacted>
+    strFileAUNAT = Dir(strPathAUNAT & strNameAUNAT)
+    
+    strNameWaste = "Waste and Paper graphs.xlsx"
+    strFileWaste = Dir(strPathAUNAT & strNameWaste)
+    
+    strPPTPath = <redacted>
+    strPPTName = "AU SYD - EMS " & strMonth & " " & strYear & ".pptx"
+    strPPTDir = strPPTPath & strPPTName
+    
+    strNameSUEZ = "DHL " & strFullMonth & " " & strYear & " Reports - Global Forwarding.xlsx"
+    strPathSUEZ = <redacted>
+    strFileSUEZ = Dir(strPathSUEZ & strNameSUEZ)
+    
+    strNameEMS = "EMS Control.xlsm"
+    
+'Trying to move waste numbers first and close the wb before starting on recycle numbers
+
+    Set wbSUEZ = Application.Workbooks.Open(strPathSUEZ & strFileSUEZ)
+    Sheets("NSW - MATRAVILLE").Select
+    'Sheets("MATRAVILLE - Global").Select 'November tab called global for some reason
+    Range("O6:O16").Select
+    Selection.Copy
+    'http://www.mrexcel.com/forum/excel-questions/360663-visual-basic-applications-switch-between-open-workbooks.html
+    Application.Workbooks(1).Activate
+    Sheets("Sheet2").Select
+    Range("B2").Select
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+   '     Range("B2:B12").Select
+   ' Set strRangeAdd = Selection
+        CardboardAdd = (Range("B3") + Range("B5")) * 1000
+   '    StyrofoamAdd =
+        PlasticAdd = Range("B6") * 1000
+        PalletAdd = Range("B7") * 1000
+        PaperAdd = Range("B4") * 1000
+        WasteSUEZ = (Range("B9") + Range("B10")) * 1000
+    
+    'http://stackoverflow.com/questions/5163265/disable-clipboard-prompt-in-excel-vba-on-workbook-close
+Application.DisplayAlerts = False
+    wbSUEZ.Close False
+Application.DisplayAlerts = True
+    Set wbSUEZ = Nothing
+    'Set strRngEMS = Workbooks(1).Worksheets("Sheet2").Range("B1:N23")
+    
+    WasteSuezTotal = "Waste Total " & WasteSUEZ & " KG"
+    Set wb = Workbooks.Open(strPath & strFile)
+    Set strRng = Workbooks(strName).Worksheets("SMC Waste").Range("C1:N11")
+    
+Call CleanAll
+
+        Cardboard = WorksheetFunction.HLookup(strMonth, strRng, 5, False) + WorksheetFunction.HLookup(strMonth, strRng, 6, False)
+        Styrofoam = WorksheetFunction.HLookup(strMonth, strRng, 2, False) + WorksheetFunction.HLookup(strMonth, strRng, 3, False) + WorksheetFunction.HLookup(strMonth, strRng, 4, False)
+        Plastic = WorksheetFunction.HLookup(strMonth, strRng, 9, False)
+        Pallet = WorksheetFunction.HLookup(strMonth, strRng, 8, False) + WorksheetFunction.HLookup(strMonth, strRng, 10, False) + WorksheetFunction.HLookup(strMonth, strRng, 11, False)
+    
+'Below is the check to see what has populated and put the results in an answerbox
+'WORKING
+
+    If WorksheetFunction.And(IsEmpty(WorksheetFunction.HLookup(strMonth, strRng, 5, False)), IsEmpty(WorksheetFunction.HLookup(strMonth, strRng, 6, False))) = True Then
+    Nocardboard = "No" & " " & strMonth & " " & "cardboard figures for " & strName
+    Else: Nocardboard = "Cardboard Total " & Cardboard & " " & "KG"
+    End If
+
+    If WorksheetFunction.And(IsEmpty(WorksheetFunction.HLookup(strMonth, strRng, 2, False)), IsEmpty(WorksheetFunction.HLookup(strMonth, strRng, 3, False)), IsEmpty(WorksheetFunction.HLookup(strMonth, strRng, 4, False))) = True Then
+    Nostyrofoam = "No" & " " & strMonth & " " & "Styrofoam figures for " & strName
+    Else: Nostyrofoam = "Styrofoam Total " & Styrofoam & " " & "PLTS"
+    End If
+
+    If WorksheetFunction.And(IsEmpty(WorksheetFunction.HLookup(strMonth, strRng, 8, False)), IsEmpty(WorksheetFunction.HLookup(strMonth, strRng, 10, False)), IsEmpty(WorksheetFunction.HLookup(strMonth, strRng, 11, False))) = True Then
+    Nopallets = "No" & " " & strMonth & " " & "Pallet figures for " & strName
+    Else: Nopallets = "Pallet Total " & Pallet & " " & "PLTS"
+    End If
+            
+    If WorksheetFunction.And(IsEmpty(WorksheetFunction.HLookup(strMonth, strRng, 9, False))) = True Then
+    Noplastic = "No" & " " & strMonth & " " & "Plastic Bail figures for " & strName
+    Else: Noplastic = "Plastic Bail Total " & Plastic & " " & "PLTS"
+    End If
+
+'vbCrLf forces a new line in the msgbox
+Answer = MsgBox(Nocardboard & " " & "+" & " " & CardboardAdd & " " & "KG" & vbCrLf & Nopallets & " " & "+" & " " & PalletAdd & " " & "KG Timber" & vbCrLf & Nostyrofoam & " " & "+" & " " & StyrofoamAdd & " " & "KG" & vbCrLf & Noplastic & " " & "+" & " " & PlasticAdd & " " & "KG" & vbCrLf & WasteSuezTotal, vbYesNo + vbQuestion, "Do you want to begin the transfer?")
+
+If Answer = vbYes Then
+MsgBox "Starting transfer"
+Call Transfer
+wb.Close False
+Set wb = Nothing
+Else
+MsgBox "FK you than homie"
+wb.Close False
+Set wb = Nothing
+End If
+
+End Sub
+
+Function NumericOnly(strSource As String) As String
+    Dim i As Integer
+    Dim strResult As String
+
+    For i = 1 To Len(strSource)
+        Select Case Asc(Mid(strSource, i, 1))
+            Case 48 To 57: 'http://www.asciitable.com/
+                strResult = strResult & Mid(strSource, i, 1)
+        End Select
+    Next
+    NumericOnly = strResult
+    
+End Function
+
+Sub CleanAll()
+    Dim rng As Range
+
+    For Each rng In Sheets("SMC Waste").Range("C2:N11").Cells
+        rng.Value = NumericOnly(rng.Value)
+    Next
+End Sub
+
+Sub Transfer()
+
+'Moves all the of the values that have been added together (now including additions) into the National spreadsheet
+'Needs to have auto email function to Kim once closed and finalised
+
+    Set wbAUNAT = Workbooks.Open(strPathAUNAT & strFileAUNAT)
+    Set strRngAUNAT = ActiveWorkbook.Sheets("SYD").Range("C6:N6")
+    
+    'Pastecell Formula explanation http://stackoverflow.com/questions/21280218/returning-the-address-of-a-hlookup-cell-in-excel
+    Set PasteCell = WorksheetFunction.Index(ActiveWorkbook.Sheets("SYD").Range("C11:N11"), WorksheetFunction.Match(strMonth, strRngAUNAT, 0))
+    Set PastePlastic = WorksheetFunction.Index(ActiveWorkbook.Sheets("SYD").Range("C26:N26"), WorksheetFunction.Match(strMonth, strRngAUNAT, 0))
+    Set PasteStyrofoam = WorksheetFunction.Index(ActiveWorkbook.Sheets("SYD").Range("C29:N29"), WorksheetFunction.Match(strMonth, strRngAUNAT, 0))
+    Set PastePallet = WorksheetFunction.Index(ActiveWorkbook.Sheets("SYD").Range("C35:N35"), WorksheetFunction.Match(strMonth, strRngAUNAT, 0))
+    Set Pastewaste = WorksheetFunction.Index(ActiveWorkbook.Sheets("SYD").Range("C32:N32"), WorksheetFunction.Match(strMonth, strRngAUNAT, 0))
+        
+    PasteCell.Value = Cardboard + CardboardAdd * 1
+    PastePlastic.Value = PlasticAdd + Plastic * 550
+    PasteStyrofoam.Value = Styrofoam * 8
+    PastePallet.Value = PalletAdd + Pallet * 20
+    Pastewaste.Value = WasteSUEZ
+    
+    Set wbWaste = Application.Workbooks.Open(strPathAUNAT & strFileWaste)
+    
+    Call Waste_Copy
+    Call ExcelToPres
+    
+    wbWaste.Close True
+    Set wbWaste = Nothing
+    
+    
+End Sub
+
+Sub ExcelToPres()
+
+Dim PPT As Object
+Set PPT = CreateObject("PowerPoint.Application")
+PPT.Visible = True
+PPT.Presentations.Open Filename:= <redacted>
+copy_chart "Waste", 3  ' Name of the sheet to copy graph and slide number the graph is to be pasted in
+copy_next "Paper", 2  ' Name of the sheet to copy graph and slide number the graph is to be pasted in
+copy_Last "Electricity", 4
+'Enumeration info https://msdn.microsoft.com/en-us/library/bb251061(v=office.12).aspx
+PPT.ActivePresentation.SaveCopyAs strPPTDir, 11
+'.Close doesn't work as the presentation is open in powerpoint where we don't have the PP11 libraries. To close the object you need to
+'hard close PPT by using quit
+PPT.Quit
+Set PPT = Nothing
+
+End Sub
+
+Public Function copy_chart(sheet, slide)
+
+Dim PPApp As Object
+Dim PPPres As Object
+'Dim PPSlide As Object
+
+Set PPApp = CreateObject("Powerpoint.Application")
+'Set PPSlide = CreateObject("Powerpoint.Slide")
+Set PPApp = GetObject(, "Powerpoint.Application")
+Set PPPres = PPApp.ActivePresentation
+
+'PPApp.ActiveWindow.ViewType = ppViewSlide
+PPApp.ActiveWindow.View.GotoSlide (3)
+
+Windows("Waste and Paper graphs.xlsx").Activate
+Worksheets("Waste").Activate
+ActiveSheet.ChartObjects("Chart 4").Chart.CopyPicture _
+Appearance:=xlScreen, Size:=xlScreen, Format:=xlPicture
+
+'PPApp.ActiveWindow.View.GotoSlide PPSlide.SlideIndex
+
+Set PPSlide = PPPres.Slides(PPApp.ActiveWindow.Selection.SlideRange.SlideIndex)
+With PPSlide
+' paste and select the chart picture
+.Shapes.Paste.Select
+' align the chart
+PPApp.ActiveWindow.Selection.ShapeRange.Left = 28
+PPApp.ActiveWindow.Selection.ShapeRange.Top = 93
+End With
+
+' Clean up
+Set PPSlide = Nothing
+Set PPPres = Nothing
+Set PPApp = Nothing
+
+End Function
+Public Function copy_next(sheet, slide)
+
+Dim PPApp As Object
+Dim PPPres As Object
+'Dim PPSlide As Object
+
+Set PPApp = CreateObject("Powerpoint.Application")
+'Set PPSlide = CreateObject("Powerpoint.Slide")
+Set PPApp = GetObject(, "Powerpoint.Application")
+Set PPPres = PPApp.ActivePresentation
+
+'PPApp.ActiveWindow.ViewType = ppViewSlide
+PPApp.ActiveWindow.View.GotoSlide (2)
+
+Windows("Waste and Paper graphs.xlsx").Activate
+Worksheets("Paper").Activate
+ActiveSheet.ChartObjects("Chart 1").Chart.CopyPicture _
+Appearance:=xlScreen, Size:=xlScreen, Format:=xlPicture
+
+' PPApp.ActiveWindow.View.GotoSlide PPSlide.SlideIndex
+
+Set PPSlide = PPPres.Slides(PPApp.ActiveWindow.Selection.SlideRange.SlideIndex)
+With PPSlide
+' paste and select the chart picture
+.Shapes.Paste.Select
+' align the chart
+PPApp.ActiveWindow.Selection.ShapeRange.Left = 28
+PPApp.ActiveWindow.Selection.ShapeRange.Top = 93
+End With
+
+' Clean up
+Set PPSlide = Nothing
+Set PPPres = Nothing
+Set PPApp = Nothing
+
+End Function
+Public Function copy_Last(sheet, slide)
+
+Dim PPApp As Object
+Dim PPPres As Object
+'Dim PPSlide As Object
+
+Set PPApp = CreateObject("Powerpoint.Application")
+'Set PPSlide = CreateObject("Powerpoint.Slide")
+Set PPApp = GetObject(, "Powerpoint.Application")
+Set PPPres = PPApp.ActivePresentation
+
+'PPApp.ActiveWindow.ViewType = ppViewSlide
+PPApp.ActiveWindow.View.GotoSlide (4)
+
+Windows("Waste and Paper graphs.xlsx").Activate
+Worksheets("Electricity").Activate
+ActiveSheet.ChartObjects("Chart 1").Chart.CopyPicture _
+Appearance:=xlScreen, Size:=xlScreen, Format:=xlPicture
+
+'PPApp.ActiveWindow.View.GotoSlide PPSlide.SlideIndex
+
+Set PPSlide = PPPres.Slides(PPApp.ActiveWindow.Selection.SlideRange.SlideIndex)
+With PPSlide
+' paste and select the chart picture
+.Shapes.Paste.Select
+' align the chart
+PPApp.ActiveWindow.Selection.ShapeRange.Left = 28
+PPApp.ActiveWindow.Selection.ShapeRange.Top = 93
+End With
+
+' Clean up
+Set PPSlide = Nothing
+Set PPPres = Nothing
+Set PPApp = Nothing
+
+End Function
